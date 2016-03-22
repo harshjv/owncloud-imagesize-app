@@ -2,7 +2,6 @@
 
 namespace OCA\ImageSize\AppInfo;
 
-use OC\Files\View;
 use OCA\ImageSize\Hook\FileHook;
 use OCP\AppFramework\App;
 use OCP\IContainer;
@@ -14,27 +13,20 @@ class Application extends App {
     parent::__construct('imagesize');
     $container = $this->getContainer();
 
-    $container->registerService('ImageSizeMapper', function($c){
+    $container->registerService('ImageSizeMapper', function(IContainer $c){
       return new ImageSizeMapper(
         $c->query('ServerContainer')->getDb()
       );
     });
 
-    $container->registerService('FileHook', function($c) {
+    $container->registerService('FileHook', function(IContainer $c) {
       $server = $c->query('ServerContainer');
-      $root = $server->getRootFolder();
 
       return new FileHook(
-        $server,
-        $root,
-        $c->query('Logger'),
-        $c->query('AppName'),
-        $c->query('ImageSizeMapper')
+        $server->getRootFolder(),
+        $c->query('ImageSizeMapper'),
+        $server->getConfig()->getSystemValue('datadirectory')
       );
-    });
-
-    $container->registerService('Logger', function($c) {
-      return $c->query('ServerContainer')->getLogger();
     });
   }
 }

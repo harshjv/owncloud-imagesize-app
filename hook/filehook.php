@@ -2,55 +2,54 @@
 namespace OCA\ImageSize\Hook;
 
 use OC\Files\Node\Root;
-use OC\Server;
 use OCP\Files\Node;
-use \OCP\ILogger;
 
 use OCA\ImageSize\Db\ImageSize;
 use OCA\ImageSize\Db\ImageSizeMapper;
 
 class FileHook {
-  private static $server;
-  private static $root;
-  private static $logger;
-  private static $appName;
-  private static $mapper;
+  protected $root;
+  protected $mapper;
+  protected $dataDirectory;
 
-  public function __construct(Server $server, Root $root, ILogger $logger, $appName, ImageSizeMapper $mapper){
-    self::$mapper = $mapper;
-    self::$server = $server;
-    self::$root = $root;
-    self::$logger = $logger;
-    self::$appName = $appName;
+  /**
+	 * Constructor
+   *
+   * @param Root $root
+   * @param ImageSizeMapper $mapper
+   * @param string $dataDirectory
+   */
+  public function __construct(Root $root, ImageSizeMapper $mapper, $dataDirectory){
+    $this->root = $root;
+    $this->mapper = $mapper;
+    $this->dataDirectory = $dataDirectory;
   }
 
-  public static function register() {
-    $callback = function (Node $node) {
-      $full_path = self::$server->getConfig()->getSystemValue('datadirectory') . $node->getPath();
-      $p = getimagesize($full_path);
+  public function register() {
+    $ref = $this;
 
-      if($p !== false) {
-        list($width, $height) = $p;
-
-        $imageSize = new ImageSize();
-        $imageSize->setFileId($node->getId());
-        $imageSize->setOriginalHeight($height);
-        $imageSize->setOriginalWidth($width);
-
-        self::$mapper->insert($imageSize);
-      }
-  		else self::log('Uploaded file is not a valid image file');
+    $callback = function (Node $node) use($ref) {
+      $ref->handlePostCreate($node);
     };
 
-    self::$root->listen('\OC\Files', 'postCreate', $callback);
+    $this->root->listen('\OC\Files', 'postCreate', $callback);
   }
 
-  static protected function getService($name) {
-	  $app = new \OCA\ImageSize\AppInfo\Application();
-	  return $app->getContainer()->query($name);
-  }
+  public function handlePostCreate(Node $node) {
+    $full_path = $this->dataDirectory . $node->getPath();
 
-  public static function log($message) {
-    self::$logger->info($message, array('app' => self::$appName));
+    $attributes = getimagesize($full_path);
+
+    // getimagesize returns false if it fails to read attributes from the given file (i.e. invalid image)
+    if($attributes !== false) {
+      list($width, $height) = $attributes;
+
+      $imageSize = new ImageSize();
+      $imageSize->setFileId($node->getId());
+      $imageSize->setOriginalHeight($height);
+      $imageSize->setOriginalWidth($width);
+
+      $this->mapper->insert($imageSize);
+    }
   }
 }
