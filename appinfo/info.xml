@@ -2,7 +2,7 @@
 <info>
     <id>imagesize</id>
     <name>Image Size</name>
-    <description>My first ownCloud app</description>
+    <description>Store uploaded image's original size to database</description>
     <licence>AGPL</licence>
     <author>Harsh Vakharia</author>
     <version>0.0.2</version>
